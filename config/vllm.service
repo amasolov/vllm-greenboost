@@ -7,8 +7,9 @@ Wants=nvidia-persistenced.service
 Type=exec
 User=${VLLM_USER}
 Group=${VLLM_GROUP}
+WorkingDirectory=~
 
-Environment=LD_PRELOAD=${GREENBOOST_SHIM_PATH}
+Environment="LD_PRELOAD=${GREENBOOST_BRIDGE_PATH} ${GREENBOOST_SHIM_PATH}"
 Environment=LD_LIBRARY_PATH=${VLLM_LD_LIBRARY_PATH}
 Environment=GREENBOOST_ACTIVE=1
 Environment=GREENBOOST_DEBUG=0

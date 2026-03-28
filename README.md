@@ -48,7 +48,7 @@ Both patches are **architecture-independent** — any GPU using PyTorch/vLLM hit
 | **GPUs** | RTX 2070-2080, Quadro RTX 4000-8000, T4 | RTX 3060-3090, A6000, A100 | RTX 4060-4090, L40, H100 |
 | **Open driver works?** | No — must use proprietary | Yes | Yes |
 | **PCIe gen** | 3.0 | 4.0 | 4.0 / 5.0 |
-| **Both patches needed?** | Yes | Yes | Yes |
+| **All patches needed?** | Yes | Yes | Yes |
 
 Estimated throughput for a **28 GB FP16 model** (e.g., Qwen2.5-14B) with sufficient host RAM:
 
@@ -61,9 +61,18 @@ Estimated throughput for a **28 GB FP16 model** (e.g., Qwen2.5-14B) with suffici
 
 GreenBoost is most valuable for models **significantly** larger than VRAM — e.g., 70B FP16 (~140 GB) on an A6000 (48 GB), overflowing ~92 GB to host RAM.
 
-## Two Upstream Bugs Fixed
+## Bugs Fixed
 
-### 1. GreenBoost: `cuMemHostGetDevicePointer` v1 vs v2
+### 1. GreenBoost: CUDA 12.8 hook bypass (`cuGetProcAddress`)
+
+GreenBoost's LD_PRELOAD shim exports CUDA runtime hooks with `@@libcudart.so.13` version tags, but PyTorch + vLLM ship CUDA 12.x (`libcudart.so.12`). Additionally, CUDA 12.8+ resolves driver functions via `cuGetProcAddress` instead of the dynamic linker PLT, bypassing GreenBoost's LD_PRELOAD hooks entirely. Result: `cudaMemGetInfo` reports real VRAM, and allocations go to real VRAM without overflow.
+
+Fix: a small bridge shim (`libgreenboost_cuda12_bridge.so`) that provides `cudaMemGetInfo`, `cudaMalloc`, `cudaMallocAsync`, and `cudaFree` with `@@libcudart.so.12` version tags, forwarding to GreenBoost's driver-level hooks.
+
+- Source: [`patches/greenboost-cuda12-bridge.c`](patches/greenboost-cuda12-bridge.c)
+- Loaded before the main GreenBoost shim in `LD_PRELOAD`
+
+### 2. GreenBoost: `cuMemHostGetDevicePointer` v1 vs v2
 
 The shim resolves `cuMemHostGetDevicePointer` (v1) via `dlsym`, which returns `CUDA_ERROR_INVALID_CONTEXT (201)` under primary contexts (`cuDevicePrimaryCtxRetain`) used by PyTorch/vLLM. This silently kills Path A and B, forcing UVM fallback.
 
@@ -72,7 +81,7 @@ Fix: `dlsym(libcuda, "cuMemHostGetDevicePointer")` -> `dlsym(libcuda, "cuMemHost
 - Patch: [`patches/greenboost-v2-device-pointer.patch`](patches/greenboost-v2-device-pointer.patch)
 - Upstream: [GreenBoost MR !5](https://gitlab.com/IsolatedOctopi/nvidia_greenboost/-/merge_requests/5)
 
-### 2. vLLM: CUDA context uninitialized in EngineCore subprocess
+### 3. vLLM: CUDA context uninitialized in EngineCore subprocess
 
 vLLM's `EngineCore` subprocess calls `torch.cuda.mem_get_info()` via `MemorySnapshot` before the CUDA context is initialized in the child process. With `LD_PRELOAD` shims active, this crashes with `cudaErrorDeviceUninitialized`.
 
@@ -126,6 +135,7 @@ Formula: `(model_size_gb + kv_cache_gb) / reported_vram_gb`. For 28 GB model on 
 | `CUDA_ERROR_NOT_SUPPORTED (801)` | Switch from open to proprietary driver |
 | `cudaErrorDeviceUninitialized` | Apply vLLM patch |
 | `undefined symbol: cudaGetDriverEntryPointByVersion` | CUDA toolkit version mismatch — see below |
+| `CUDA out of memory` despite GreenBoost showing inflated VRAM | Bridge shim not loaded — see CUDA 12.x bridge section above |
 | OOM killer | Lower `GPU_MEMORY_UTILIZATION` |
 | Logs show `UVM alloc` instead of `DMA-BUF import` | All of the above; check `ulimit -l`; enable `GREENBOOST_DEBUG=1` |
 
@@ -145,7 +155,7 @@ Or re-run `sudo ./setup.sh` to regenerate everything.
 ## Repo Structure
 
 ```
-patches/           # Both upstream fixes as unified diffs
+patches/           # Upstream fixes + CUDA 12.x bridge shim source
 config/            # systemd unit, modprobe, memlock templates
 scripts/           # verify.sh, benchmark.sh
 setup.sh           # Automated setup (sources .env)

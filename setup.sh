@@ -170,6 +170,16 @@ echo "" > /etc/ld.so.preload 2>/dev/null || true
 echo "Installing shim to ${GREENBOOST_SHIM_PATH}..."
 cp "${GREENBOOST_INSTALL_DIR}/libgreenboost_cuda.so" "${GREENBOOST_SHIM_PATH}"
 chmod 755 "${GREENBOOST_SHIM_PATH}"
+
+echo "Building CUDA 12.x bridge shim..."
+GREENBOOST_BRIDGE_PATH="/usr/local/lib/libgreenboost_cuda12_bridge.so"
+gcc -shared -fPIC \
+    -Wl,--version-script="${SCRIPT_DIR}/patches/greenboost-cuda12-bridge.map" \
+    -o "${GREENBOOST_BRIDGE_PATH}" \
+    "${SCRIPT_DIR}/patches/greenboost-cuda12-bridge.c" -ldl
+chmod 755 "${GREENBOOST_BRIDGE_PATH}"
+export GREENBOOST_BRIDGE_PATH
+
 ldconfig
 
 # ── 3. System configuration ──────────────────────────────────────────────────
@@ -201,18 +211,29 @@ modprobe greenboost
 echo "GreenBoost kernel module loaded."
 
 # Global LD_PRELOAD — enable only after all system commands are done.
-echo "${GREENBOOST_SHIM_PATH}" > /etc/ld.so.preload
+printf '%s\n%s\n' "${GREENBOOST_BRIDGE_PATH}" "${GREENBOOST_SHIM_PATH}" > /etc/ld.so.preload
+
+# Allow the vllm user to access the GreenBoost kernel device
+if [[ -e /dev/greenboost ]]; then
+    chmod 666 /dev/greenboost
+fi
 
 # ── 4. vLLM ──────────────────────────────────────────────────────────────────
 section "vLLM ${VLLM_VERSION}"
 
 apt-get install -y python3 python3-venv python3-pip 2>/dev/null || true
 
-# Create service user
+# Create service user (with home dir for vLLM's model cache and
+# multiprocessing.spawn CWD requirement)
 if ! id "${VLLM_USER}" &>/dev/null; then
-    useradd --system --no-create-home --shell /usr/sbin/nologin \
+    useradd --system --create-home --shell /usr/sbin/nologin \
         --groups "${VLLM_GROUP}" "${VLLM_USER}"
     echo "Created system user ${VLLM_USER}."
+elif [[ ! -d "$(getent passwd "${VLLM_USER}" | cut -d: -f6)" ]]; then
+    VLLM_HOME=$(getent passwd "${VLLM_USER}" | cut -d: -f6)
+    mkdir -p "${VLLM_HOME}"
+    chown "${VLLM_USER}:${VLLM_GROUP}" "${VLLM_HOME}"
+    echo "Created missing home directory ${VLLM_HOME}."
 fi
 
 # Create virtual environment
@@ -301,7 +322,7 @@ fi
 section "systemd service"
 
 # Export all variables needed by the service template
-export GREENBOOST_SHIM_PATH GREENBOOST_VRAM_HEADROOM_MB GREENBOOST_USE_DMA_BUF
+export GREENBOOST_SHIM_PATH GREENBOOST_BRIDGE_PATH GREENBOOST_VRAM_HEADROOM_MB GREENBOOST_USE_DMA_BUF
 export VLLM_VENV VLLM_LD_LIBRARY_PATH
 export MODEL_PATH VLLM_DTYPE VLLM_MAX_MODEL_LEN GPU_MEMORY_UTILIZATION
 export VLLM_HOST VLLM_PORT VLLM_USER VLLM_GROUP
