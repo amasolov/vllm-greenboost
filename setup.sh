@@ -98,15 +98,23 @@ if [[ "${DRIVER_JUST_INSTALLED:-0}" -eq 1 ]]; then
     exit 0
 fi
 
-# Verify driver is proprietary (not open kernel module)
-DRIVER_LICENSE=$(modinfo "$(find /lib/modules/"${KERNEL_VER}" -name 'nvidia.ko*' 2>/dev/null | head -1)" 2>/dev/null | awk '/^license/ {print $2}')
+# Verify driver is proprietary (not open kernel module) — required on Turing.
+DRIVER_LICENSE=$(modinfo nvidia 2>/dev/null | awk '/^license:/ {print $2}')
 if [[ "${DRIVER_LICENSE}" == "GPL" ]]; then
-    echo "ERROR: The loaded nvidia.ko is GPL (open kernel module)."
-    echo "       cuMemHostRegister is not supported on Turing with the open module."
-    echo "       Remove open packages and install proprietary ones."
-    exit 1
+    GPU_CC=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1)
+    if [[ "${GPU_CC}" == "7.5" ]]; then
+        echo "ERROR: The loaded nvidia.ko is GPL (open kernel module)."
+        echo "       cuMemHostRegister is not supported on Turing (sm_75) with the open module."
+        echo "       Remove open packages and install proprietary ones."
+        exit 1
+    else
+        echo "WARNING: Open kernel module detected (license: GPL)."
+        echo "         This is OK for Ampere+ (compute ${GPU_CC}), but if you hit"
+        echo "         CUDA_ERROR_NOT_SUPPORTED (801), switch to the proprietary driver."
+    fi
+else
+    echo "Driver verified: proprietary (license: ${DRIVER_LICENSE:-NVIDIA})."
 fi
-echo "Driver verified: proprietary (license: ${DRIVER_LICENSE:-NVIDIA})."
 
 # ── 2. GreenBoost ────────────────────────────────────────────────────────────
 section "GreenBoost (clone, patch, build)"
