@@ -243,6 +243,21 @@ else
     fi
 fi
 
+# The nvidia-cuda-runtime-cu12 pip package ships libcudart.so.12 but not the
+# unversioned libcudart.so symlink.  Some libraries in the dependency chain
+# load "libcudart.so" (unversioned); without this symlink the dynamic linker
+# falls through to the system's older libcudart from nvidia-cuda-toolkit,
+# poisoning symbol resolution for the rest of the process.
+CUDART_DIR=$("${VLLM_VENV}/bin/python3" -c "
+import importlib.util, pathlib
+base = pathlib.Path(importlib.util.find_spec('nvidia').submodule_search_locations[0])
+print(base / 'cuda_runtime' / 'lib')
+")
+if [[ -f "${CUDART_DIR}/libcudart.so.12" && ! -e "${CUDART_DIR}/libcudart.so" ]]; then
+    ln -sf libcudart.so.12 "${CUDART_DIR}/libcudart.so"
+    echo "Created libcudart.so symlink in ${CUDART_DIR}."
+fi
+
 # Build LD_LIBRARY_PATH so PyTorch's bundled CUDA libs take priority over
 # the system nvidia-cuda-toolkit (which may be an older CUDA version).
 TORCH_LIB=$("${VLLM_VENV}/bin/python3" -c "import torch, pathlib; print(pathlib.Path(torch.__file__).parent / 'lib')")
