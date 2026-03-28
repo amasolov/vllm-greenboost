@@ -87,6 +87,9 @@ if [[ $NEED_DRIVER -eq 1 ]]; then
     DRIVER_JUST_INSTALLED=1
 fi
 
+# Build-time only: provides nvcc and headers for compiling the GreenBoost
+# kernel module + shim.  Runtime CUDA libs come from PyTorch's pip packages;
+# LD_LIBRARY_PATH in the systemd service ensures those take priority.
 apt-get install -y nvidia-cuda-toolkit 2>/dev/null || true
 
 if [[ "${DRIVER_JUST_INSTALLED:-0}" -eq 1 ]]; then
@@ -224,6 +227,18 @@ else
     fi
 fi
 
+# Build LD_LIBRARY_PATH so PyTorch's bundled CUDA libs take priority over
+# the system nvidia-cuda-toolkit (which may be an older CUDA version).
+TORCH_LIB=$("${VLLM_VENV}/bin/python3" -c "import torch, pathlib; print(pathlib.Path(torch.__file__).parent / 'lib')")
+NVIDIA_LIBS=$("${VLLM_VENV}/bin/python3" -c "
+import importlib.util, pathlib
+base = pathlib.Path(importlib.util.find_spec('nvidia').submodule_search_locations[0])
+print(':'.join(str(p) for p in sorted(base.glob('*/lib'))))
+" 2>/dev/null || true)
+VLLM_LD_LIBRARY_PATH="${TORCH_LIB}${NVIDIA_LIBS:+:${NVIDIA_LIBS}}"
+export VLLM_LD_LIBRARY_PATH
+echo "PyTorch CUDA library path: ${VLLM_LD_LIBRARY_PATH}"
+
 chown -R "${VLLM_USER}:${VLLM_GROUP}" "${VLLM_VENV}"
 
 # ── 5. Model download ────────────────────────────────────────────────────────
@@ -256,7 +271,8 @@ section "systemd service"
 
 # Export all variables needed by the service template
 export GREENBOOST_SHIM_PATH GREENBOOST_VRAM_HEADROOM_MB GREENBOOST_USE_DMA_BUF
-export VLLM_VENV MODEL_PATH VLLM_DTYPE VLLM_MAX_MODEL_LEN GPU_MEMORY_UTILIZATION
+export VLLM_VENV VLLM_LD_LIBRARY_PATH
+export MODEL_PATH VLLM_DTYPE VLLM_MAX_MODEL_LEN GPU_MEMORY_UTILIZATION
 export VLLM_HOST VLLM_PORT VLLM_USER VLLM_GROUP
 
 envsubst < "${SCRIPT_DIR}/config/vllm.service" > /etc/systemd/system/vllm.service

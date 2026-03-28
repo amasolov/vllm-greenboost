@@ -125,8 +125,21 @@ Formula: `(model_size_gb + kv_cache_gb) / reported_vram_gb`. For 28 GB model on 
 | `cuMemHostGetDevicePointer FAILED ret=201` | Apply GreenBoost patch (v1 -> v2) |
 | `CUDA_ERROR_NOT_SUPPORTED (801)` | Switch from open to proprietary driver |
 | `cudaErrorDeviceUninitialized` | Apply vLLM patch |
+| `undefined symbol: cudaGetDriverEntryPointByVersion` | CUDA toolkit version mismatch — see below |
 | OOM killer | Lower `GPU_MEMORY_UTILIZATION` |
 | Logs show `UVM alloc` instead of `DMA-BUF import` | All of the above; check `ulimit -l`; enable `GREENBOOST_DEBUG=1` |
+
+### `undefined symbol: cudaGetDriverEntryPointByVersion`
+
+vLLM's PyTorch wheels bundle CUDA 12.6+ runtime libraries, but the system `nvidia-cuda-toolkit` package may provide an older `libcudart.so` (e.g. CUDA 12.4). If the dynamic linker finds the system's older library first, PyTorch's `libc10_cuda.so` fails to resolve symbols added in 12.5+.
+
+The setup script automatically sets `LD_LIBRARY_PATH` in the systemd service so PyTorch's bundled CUDA libraries take priority. If you hit this after a manual install, ensure the service environment includes:
+
+```
+Environment=LD_LIBRARY_PATH=/opt/vllm-env/lib/python3.*/site-packages/torch/lib
+```
+
+Or re-run `sudo ./setup.sh` to regenerate the service file.
 
 ## Repo Structure
 
