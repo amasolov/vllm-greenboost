@@ -39,6 +39,28 @@ Expected throughput scaling with faster PCIe:
 | Gen4 x16 | ~32 GB/s | ~1.4 tok/s |
 | Gen5 x16 | ~64 GB/s | ~2.8 tok/s |
 
+## GPU Compatibility
+
+Both patches are **architecture-independent** — any GPU using PyTorch/vLLM hits the same bugs. The only architecture-specific difference is the driver requirement:
+
+| | Turing (`sm_75`) | Ampere (`sm_80`) | Ada/Hopper+ |
+|---|---|---|---|
+| **GPUs** | RTX 2070-2080, Quadro RTX 4000-8000, T4 | RTX 3060-3090, A6000, A100 | RTX 4060-4090, L40, H100 |
+| **Open driver works?** | No — must use proprietary | Yes | Yes |
+| **PCIe gen** | 3.0 | 4.0 | 4.0 / 5.0 |
+| **Both patches needed?** | Yes | Yes | Yes |
+
+Estimated throughput for a **28 GB FP16 model** (e.g., Qwen2.5-14B) with sufficient host RAM:
+
+| GPU | VRAM | Overflow | PCIe | Est. Throughput |
+|-----|------|----------|------|-----------------|
+| Quadro RTX 5000 | 16 GB | 14 GB | Gen3 x16 | ~0.7 tok/s (measured) |
+| RTX 3090 | 24 GB | 4 GB | Gen4 x16 | ~3-5 tok/s |
+| A6000 | 48 GB | 0 GB | Gen4 x16 | Full speed (fits in VRAM) |
+| RTX 4090 | 24 GB | 4 GB | Gen4 x16 | ~3-5 tok/s |
+
+GreenBoost is most valuable for models **significantly** larger than VRAM — e.g., 70B FP16 (~140 GB) on an A6000 (48 GB), overflowing ~92 GB to host RAM.
+
 ## Two Upstream Bugs Fixed
 
 ### 1. GreenBoost: `cuMemHostGetDevicePointer` v1 vs v2
