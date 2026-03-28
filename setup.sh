@@ -143,6 +143,16 @@ else
     git apply "${SCRIPT_DIR}/patches/greenboost-v2-device-pointer.patch" || true
 fi
 
+# Clear ld.so.preload before building — on re-runs the old shim is loaded
+# into every process (make, gcc, insmod …) and segfaults if it tries to
+# intercept CUDA calls in a non-CUDA context.
+LD_PRELOAD_BAK=""
+if [[ -f /etc/ld.so.preload ]]; then
+    LD_PRELOAD_BAK=$(cat /etc/ld.so.preload)
+    echo "" > /etc/ld.so.preload
+    echo "Temporarily cleared /etc/ld.so.preload for clean build."
+fi
+
 echo "Building kernel module..."
 make -C "${GREENBOOST_INSTALL_DIR}" module
 
@@ -151,14 +161,6 @@ make -C "${GREENBOOST_INSTALL_DIR}" shim
 
 echo "Installing kernel module..."
 make -C "${GREENBOOST_INSTALL_DIR}" install
-
-# Temporarily clear ld.so.preload to avoid segfaults when copying the shim
-# (if an older broken shim is loaded globally, even cp/sudo can crash)
-LD_PRELOAD_BAK=""
-if [[ -f /etc/ld.so.preload ]]; then
-    LD_PRELOAD_BAK=$(cat /etc/ld.so.preload)
-    echo "" > /etc/ld.so.preload
-fi
 
 echo "Installing shim to ${GREENBOOST_SHIM_PATH}..."
 cp "${GREENBOOST_INSTALL_DIR}/libgreenboost_cuda.so" "${GREENBOOST_SHIM_PATH}"
