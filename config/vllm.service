@@ -1,0 +1,33 @@
+[Unit]
+Description=vLLM Model Server (GreenBoost VRAM oversubscription)
+After=network.target nvidia-persistenced.service
+Wants=nvidia-persistenced.service
+
+[Service]
+Type=exec
+User=${VLLM_USER}
+Group=${VLLM_GROUP}
+
+Environment=LD_PRELOAD=${GREENBOOST_SHIM_PATH}
+Environment=GREENBOOST_ACTIVE=1
+Environment=GREENBOOST_DEBUG=0
+Environment=GREENBOOST_VRAM_HEADROOM_MB=${GREENBOOST_VRAM_HEADROOM_MB}
+Environment=GREENBOOST_USE_DMA_BUF=${GREENBOOST_USE_DMA_BUF}
+Environment=GREENBOOST_NO_HOSTREG=0
+Environment=CUDA_VISIBLE_DEVICES=0
+
+ExecStart=${VLLM_VENV}/bin/vllm serve ${MODEL_PATH} \
+    --dtype ${VLLM_DTYPE} \
+    --max-model-len ${VLLM_MAX_MODEL_LEN} \
+    --gpu-memory-utilization ${GPU_MEMORY_UTILIZATION} \
+    --host ${VLLM_HOST} \
+    --port ${VLLM_PORT} \
+    --enforce-eager
+
+Restart=on-failure
+RestartSec=10
+LimitMEMLOCK=infinity
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

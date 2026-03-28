@@ -1,0 +1,29 @@
+From 89f1fa3f9b1b621a922ee866468ef45eccd7a959 Mon Sep 17 00:00:00 2001
+From: Alexey Masolov <alexey.masolov@gmail.com>
+Date: Sat, 28 Mar 2026 15:22:57 +1100
+Subject: [PATCH] fix: use cuMemHostGetDevicePointer_v2 for primary context
+ compatibility
+
+Path A (DMA-BUF) and Path B (HostReg) fail when the app uses CUDA primary context (PyTorch, vLLM, etc.). The v1 dlsym returns CUDA_ERROR_INVALID_CONTEXT (201); v2 works with primary contexts.
+
+Change dlsym lookup from cuMemHostGetDevicePointer to cuMemHostGetDevicePointer_v2.
+---
+ greenboost_cuda_shim.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/greenboost_cuda_shim.c b/greenboost_cuda_shim.c
+index 952d323..3508644 100755
+--- a/greenboost_cuda_shim.c
++++ b/greenboost_cuda_shim.c
+@@ -589,7 +589,7 @@ static void gb_shim_init(void)
+         real_cuDeviceTotalMem_v2 = (pfn_cuDeviceTotalMem_v2) dlsym(libcuda, "cuDeviceTotalMem");
+     real_cuMemHostRegister = (pfn_cuMemHostRegister) dlsym(libcuda, "cuMemHostRegister");
+     real_cuMemHostUnregister = (pfn_cuMemHostUnregister) dlsym(libcuda, "cuMemHostUnregister");
+-    real_cuMemHostGetDevicePointer = (pfn_cuMemHostGetDevicePointer) dlsym(libcuda, "cuMemHostGetDevicePointer");
++    real_cuMemHostGetDevicePointer = (pfn_cuMemHostGetDevicePointer) dlsym(libcuda, "cuMemHostGetDevicePointer_v2");
+     real_cuMemPrefetchAsync = (pfn_cuMemPrefetchAsync) dlsym(libcuda, "cuMemPrefetchAsync");
+     real_cuMemAdvise = (pfn_cuMemAdvise) dlsym(libcuda, "cuMemAdvise");
+ 
+-- 
+2.53.0
+
