@@ -13,6 +13,8 @@
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+unset LD_PRELOAD 2>/dev/null || true
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Load configuration ────────────────────────────────────────────────────────
@@ -162,6 +164,9 @@ make -C "${GREENBOOST_INSTALL_DIR}" shim
 echo "Installing kernel module..."
 make -C "${GREENBOOST_INSTALL_DIR}" install
 
+# Re-clear: GreenBoost's Makefile may restore /etc/ld.so.preload during install
+echo "" > /etc/ld.so.preload 2>/dev/null || true
+
 echo "Installing shim to ${GREENBOOST_SHIM_PATH}..."
 cp "${GREENBOOST_INSTALL_DIR}/libgreenboost_cuda.so" "${GREENBOOST_SHIM_PATH}"
 chmod 755 "${GREENBOOST_SHIM_PATH}"
@@ -189,13 +194,14 @@ cp "${SCRIPT_DIR}/config/modules-load-greenboost.conf" /etc/modules-load.d/green
 # memlock limits (required for cuMemHostRegister)
 cp "${SCRIPT_DIR}/config/99-greenboost-memlock.conf" /etc/security/limits.d/99-greenboost.conf
 
-# Global LD_PRELOAD
-echo "${GREENBOOST_SHIM_PATH}" > /etc/ld.so.preload
-
-# Load module now
+# Load module now (before writing ld.so.preload — modprobe can segfault
+# if the shim is globally preloaded into it).
 rmmod greenboost 2>/dev/null || true
 modprobe greenboost
 echo "GreenBoost kernel module loaded."
+
+# Global LD_PRELOAD — enable only after all system commands are done.
+echo "${GREENBOOST_SHIM_PATH}" > /etc/ld.so.preload
 
 # ── 4. vLLM ──────────────────────────────────────────────────────────────────
 section "vLLM ${VLLM_VERSION}"
