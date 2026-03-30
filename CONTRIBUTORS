@@ -1,0 +1,15 @@
+# Contributors
+
+## vllm-greenboost
+
+**Alexey Masolov** <alexey.masolov@gmail.com>
+- Project author
+- GreenBoost CUDA 12.x bridge shim (`libgreenboost_cuda12_bridge.so`)
+- Automated setup and verification scripts
+- vLLM EngineCore CUDA context initialization patch
+
+## Upstream: GreenBoost
+
+**Ferran Duarri** — [gitlab.com/IsolatedOctopi/nvidia_greenboost](https://gitlab.com/IsolatedOctopi/nvidia_greenboost)
+- GreenBoost VRAM oversubscription shim (original author)
+- `cuMemHostRegister(DEVICEMAP)` / DMA-BUF overflow mechanism

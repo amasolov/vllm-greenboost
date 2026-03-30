@@ -1,21 +1,78 @@
-MIT License
+vllm-greenboost License
+=======================
 
-Copyright (c) 2026 Alexey Masolov
+Copyright (C) 2026 Alexey Masolov. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This project integrates and extends GreenBoost (https://gitlab.com/IsolatedOctopi/nvidia_greenboost),
+which is Copyright (C) 2026 Ferran Duarri and released under the GreenBoost Dual License
+(GPL v2 / Commercial). As a derivative work, vllm-greenboost is distributed under the same
+dual-license model.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+──────────────────────────────────────────────────────────────────────────────
+MANDATORY ATTRIBUTION (required under all license options)
+──────────────────────────────────────────────────────────────────────────────
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+All copies, forks, derivative works, documentation, publications, or
+distributions of this software must clearly credit:
+
+  GreenBoost — created by Ferran Duarri
+  https://gitlab.com/IsolatedOctopi/nvidia_greenboost
+
+  vllm-greenboost — created by Alexey Masolov
+  https://github.com/amasolov/vllm-greenboost
+
+──────────────────────────────────────────────────────────────────────────────
+OPTION A — GNU General Public License v2 (open-source use)
+──────────────────────────────────────────────────────────────────────────────
+
+For open-source projects, personal use, research, and non-commercial use,
+this software is licensed under the GNU General Public License v2 (GPL v2),
+as published by the Free Software Foundation.
+
+You may redistribute and/or modify this software under the terms of the
+GPL v2. A copy of the GPL v2 is included below.
+
+──────────────────────────────────────────────────────────────────────────────
+OPTION B — Commercial License
+──────────────────────────────────────────────────────────────────────────────
+
+For commercial use, proprietary integration, SaaS products, embedded
+products, or any use that cannot comply with GPL v2, separate commercial
+licenses are required from both copyright holders:
+
+  • GreenBoost commercial license: ferran.duarri@me.com
+  • vllm-greenboost commercial license: alexey.masolov@gmail.com
+
+──────────────────────────────────────────────────────────────────────────────
+THIRD-PARTY COMPONENTS
+──────────────────────────────────────────────────────────────────────────────
+
+This project includes patches targeting vLLM (https://github.com/vllm-project/vllm),
+which is licensed under the Apache License 2.0. Those patches, when applied to
+vLLM, are subject to the Apache License 2.0 terms.
+
+──────────────────────────────────────────────────────────────────────────────
+GNU GENERAL PUBLIC LICENSE Version 2, June 1991
+──────────────────────────────────────────────────────────────────────────────
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+──────────────────────────────────────────────────────────────────────────────
+DISCLAIMER
+──────────────────────────────────────────────────────────────────────────────
+
+NVIDIA, GeForce, RTX, CUDA, and NVML are trademarks of NVIDIA Corporation.
+This project is not affiliated with, endorsed by, or sponsored by NVIDIA
+Corporation or any other third party.

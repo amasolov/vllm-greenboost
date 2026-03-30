@@ -164,4 +164,11 @@ setup.sh           # Automated setup (sources .env)
 
 ## License
 
-[MIT](LICENSE)
+vllm-greenboost is a derivative work of [GreenBoost](https://gitlab.com/IsolatedOctopi/nvidia_greenboost)
+(Copyright © 2026 Ferran Duarri) and is distributed under the same
+**[GreenBoost Dual License](LICENSE)**: GPL v2 for open-source/non-commercial use,
+or a commercial license for proprietary integration.
+
+Patches targeting vLLM are subject to the [Apache License 2.0](https://github.com/vllm-project/vllm/blob/main/LICENSE).
+
+See [CONTRIBUTORS](CONTRIBUTORS) for authorship details.
